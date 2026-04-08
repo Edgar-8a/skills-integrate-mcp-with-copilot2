@@ -1,7 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
   const activitiesList = document.getElementById("activities-list");
-  const activitySelect = document.getElementById("activity");
-  const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
   // Function to fetch activities from API
@@ -42,23 +40,32 @@ document.addEventListener("DOMContentLoaded", () => {
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <button class="register-btn" data-activity="${name}">Register Student</button>
+          <div class="register-form" data-activity="${name}">
+            <input type="email" placeholder="your-email@mergington.edu" required>
+            <button type="submit">Sign Up</button>
+          </div>
           <div class="participants-container">
             ${participantsHTML}
           </div>
         `;
 
         activitiesList.appendChild(activityCard);
-
-        // Add option to select dropdown
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        activitySelect.appendChild(option);
       });
 
       // Add event listeners to delete buttons
       document.querySelectorAll(".delete-btn").forEach((button) => {
         button.addEventListener("click", handleUnregister);
+      });
+
+      // Add event listeners to register buttons
+      document.querySelectorAll(".register-btn").forEach((button) => {
+        button.addEventListener("click", handleRegisterToggle);
+      });
+
+      // Add event listeners to register forms
+      document.querySelectorAll(".register-form button[type='submit']").forEach((button) => {
+        button.addEventListener("click", handleRegisterSubmit);
       });
     } catch (error) {
       activitiesList.innerHTML =
@@ -67,61 +74,33 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Handle unregister functionality
-  async function handleUnregister(event) {
+  // Handle register button toggle
+  function handleRegisterToggle(event) {
     const button = event.target;
     const activity = button.getAttribute("data-activity");
-    const email = button.getAttribute("data-email");
-
-    try {
-      const response = await fetch(
-        `/activities/${encodeURIComponent(
-          activity
-        )}/unregister?email=${encodeURIComponent(email)}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      const result = await response.json();
-
-      if (response.ok) {
-        messageDiv.textContent = result.message;
-        messageDiv.className = "success";
-
-        // Refresh activities list to show updated participants
-        fetchActivities();
-      } else {
-        messageDiv.textContent = result.detail || "An error occurred";
-        messageDiv.className = "error";
-      }
-
-      messageDiv.classList.remove("hidden");
-
-      // Hide message after 5 seconds
-      setTimeout(() => {
-        messageDiv.classList.add("hidden");
-      }, 5000);
-    } catch (error) {
-      messageDiv.textContent = "Failed to unregister. Please try again.";
-      messageDiv.className = "error";
-      messageDiv.classList.remove("hidden");
-      console.error("Error unregistering:", error);
-    }
+    const form = document.querySelector(`.register-form[data-activity="${activity}"]`);
+    form.style.display = form.style.display === "block" ? "none" : "block";
   }
 
-  // Handle form submission
-  signupForm.addEventListener("submit", async (event) => {
+  // Handle register form submit
+  async function handleRegisterSubmit(event) {
     event.preventDefault();
+    const button = event.target;
+    const form = button.parentElement;
+    const input = form.querySelector("input");
+    const activity = form.getAttribute("data-activity");
+    const email = input.value.trim();
 
-    const email = document.getElementById("email").value;
-    const activity = document.getElementById("activity").value;
+    if (!email) {
+      messageDiv.textContent = "Please enter an email address.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      return;
+    }
 
     try {
       const response = await fetch(
-        `/activities/${encodeURIComponent(
-          activity
-        )}/signup?email=${encodeURIComponent(email)}`,
+        `/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`,
         {
           method: "POST",
         }
@@ -132,7 +111,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (response.ok) {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
-        signupForm.reset();
+        input.value = "";
+        form.style.display = "none";
 
         // Refresh activities list to show updated participants
         fetchActivities();
@@ -153,7 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
     }
-  });
+  }
 
   // Initialize app
   fetchActivities();
